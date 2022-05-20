@@ -43,6 +43,8 @@ jobs:
   tag_release:
     if: ${{ github.event_name == 'push' }}
     needs: [simple_deployment_pipeline]
+    permissions:
+      contents: write
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -52,4 +54,3 @@ jobs:
         uses: anothrNick/github-tag-action@1.39.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERBOSE: false
