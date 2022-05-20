@@ -1,4 +1,4 @@
-name: Hello World!
+name: Test Workflow
 
 on:
     push:
