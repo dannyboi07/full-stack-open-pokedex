@@ -38,14 +38,14 @@ jobs:
               with:
                 severity: info
                 details: Tests Succeeded!
-                webhookUrl: $DW
+                webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
             - name: Determining failure of Tests
               if: ${{ failure() }}
               uses: rjstone/discord-webhook-notify@v1
               with:
                 severity: error
                 details: Tests Failed!
-                webhookUrl: $DW
+                webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
     deployment_pipeline:
         needs: [test_pipeline]
         if: ${{ github.event_name == 'push' }}
@@ -67,14 +67,14 @@ jobs:
           with:
             severity: info
             details: Deployment Succeeded!
-            webhookUrl: $DW
+            webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
         - name: Determining failure of Deployment
           if: ${{ failure() }}
           uses: rjstone/discord-webhook-notify@v1
           with:
             severity: error
             details: Deployment Failed!
-            webhookUrl: $DW
+            webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
     tag_release:
         if: ${{ github.event_name == 'push' && !contains(toJson(github.events.commits.*.message), '#skip') }}
         needs: [test_pipeline]
@@ -97,11 +97,11 @@ jobs:
               with:
                 severity: info
                 details: Release tagged successfully!
-                webhookUrl: $DW
+                webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
             - name: Determining failure of workflow tagging releases
               if: ${{ failure() }}
               uses: rjstone/discord-webhook-notify@v1
               with:
                 severity: error
                 details: Release failed to tagged!
-                webhookUrl: $DW
+                webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
