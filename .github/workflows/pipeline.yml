@@ -11,6 +11,8 @@ on:
 jobs:
     test_pipeline:
         runs-on: ubuntu-20.04
+        env: 
+          DW: ${{ secrets.DISCORD_WEBHOOK }}
         steps:
             - uses: actions/checkout@v3
             - uses: actions/setup-node@v2
@@ -30,10 +32,26 @@ jobs:
                   command: npm run test:e2e
                   start: npm run start-prod
                   wait-on: http://localhost:5000
+            - name: Determining success of Tests
+              if: ${{ success() }}
+              uses: rjstone/discord-webhook-notify@v1
+              with:
+                severity: info
+                details: Tests Succeeded!
+                webhookUrl: $DW
+            - name: Determining failure of Tests
+              if: ${{ failure() }}
+              uses: rjstone/discord-webhook-notify@v1
+              with:
+                severity: error
+                details: Tests Failed!
+                webhookUrl: $DW
     deployment_pipeline:
-        if: ${{ github.event_name == 'push' }}
         needs: [test_pipeline]
+        if: ${{ github.event_name == 'push' }}
         runs-on: ubuntu-20.04
+        env: 
+          DW: ${{ secrets.DISCORD_WEBHOOK }}
         steps:
         - uses: akhileshns/heroku-deploy@v3.12.12
           with:
@@ -43,12 +61,28 @@ jobs:
               healthcheck: "https://thawing-everglades-99553.herokuapp.com/health"
               checkstring: "ok"
               rollbackonhealthcheckfailed: true
+        - name: Determining success of Deployment
+          if: ${{ success() }}
+          uses: rjstone/discord-webhook-notify@v1
+          with:
+            severity: info
+            details: Deployment Succeeded!
+            webhookUrl: $DW
+        - name: Determining failure of Deployment
+          if: ${{ failure() }}
+          uses: rjstone/discord-webhook-notify@v1
+          with:
+            severity: error
+            details: Deployment Failed!
+            webhookUrl: $DW
     tag_release:
         if: ${{ github.event_name == 'push' && !contains(toJson(github.events.commits.*.message), '#skip') }}
         needs: [test_pipeline]
         permissions:
             contents: write
         runs-on: ubuntu-20.04
+        env: 
+          DW: ${{ secrets.DISCORD_WEBHOOK }}
         steps:
             - uses: actions/checkout@v2
               with:
@@ -57,47 +91,17 @@ jobs:
               uses: anothrNick/github-tag-action@eca2b69f9e2c24be7decccd0f15fdb1ea5906598
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    notify:
-        runs-on: ubuntu-20.04
-        steps:
-            - name: Test Status
-              needs: [test_pipeline]
-              if: ${{ !github.event_name == 'push' && success() }}
-              uses: rjstone/discord-webhook-notify@v1 
-              with:
-                  severity: info
-                  details: Tests Succeeded!
-                  webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
-              if: ${{ !github.event_name == 'push' && failure() }} 
-              with:
-                  severity: error
-                  details: Test Failed!
-                  webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
-
-            - name: Deployment Status
-              needs: [deployment_pipeline]
-              if: ${{ github.event_name == 'push' && success() }}
+            - name: Determining success of workflow tagging releases
+              if: ${{ success() }}
               uses: rjstone/discord-webhook-notify@v1
               with:
-                  severity: info
-                  details: Deployment Succeeded!
-                  webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
-              if: ${{ github.event_name == 'push' && failure() }}
-              with: 
-                  severity: error
-                  details: Deployment Failed!
-                  webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
-                    
-            - name: Release Tagging Status
-              needs: [tag_release]
-              if: ${{ github.event_name == 'push' && success() && !contains(toJson(github.events.commits.*.message), '#skip') }}
+                severity: info
+                details: Release tagged successfully!
+                webhookUrl: $DW
+            - name: Determining failure of workflow tagging releases
+              if: ${{ failure() }}
               uses: rjstone/discord-webhook-notify@v1
               with:
-                  severity: info
-                  details: Release tagged successfully
-                  webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
-              if: ${{ github.event_name == 'push' && success() && !contains(toJson(github.events.commits.*.message), '#skip') }}
-              with:
-                  severity: error
-                  details: Failed to tag release
-                  webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+                severity: error
+                details: Release failed to tagged!
+                webhookUrl: $DW
