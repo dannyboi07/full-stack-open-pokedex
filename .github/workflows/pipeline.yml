@@ -56,54 +56,45 @@ jobs:
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     notify:
-        runs-on: ubuntu-20.04
-        env:
-            DW: ${{ secrets.DISCORD_WEBHOOK }}
         steps:
-            - name: "Test Status"
-              if: ${{ !github.event_name == 'push' }} 
+            - name: Test Status
               needs: [test_pipeline]
-              uses: rjstone/discord-webhook-notify@v1
+              if: ${{ !github.event_name == 'push' && success() }}
+              uses: rjstone/discord-webhook-notify@v1 
               with:
-                  webhookUrl: $DW
-              steps:
-              - if: success()
-                  with: 
-                      severity: info
-                      details: Tests Succeeded!
-              - if: failure()
-                  with:
-                      severity: error
-                      details: Test Failed!
+                  severity: info
+                  details: Tests Succeeded!
+                  webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+              if: ${{ !github.event_name == 'push' && failure() }} 
+              with:
+                  severity: error
+                  details: Test Failed!
+                  webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
 
-            - name: "Deployment Status"
-              if: ${{ github.event_name == 'push' }}
+            - name: Deployment Status
               needs: [deployment_pipeline]
+              if: ${{ github.event_name == 'push' && success() }}
               uses: rjstone/discord-webhook-notify@v1
               with:
-                  webhookUrl: $DW
-              steps:
-              - if: success()
-                  with: 
-                      severity: info
-                      details: Deployment Succeeded!
-              - if: failure()
-                  with: 
-                      severity: error
-                      details: Deployment Failed!
+                  severity: info
+                  details: Deployment Succeeded!
+                  webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+              if: ${{ github.event_name == 'push' && failure() }}
+              with: 
+                  severity: error
+                  details: Deployment Failed!
+                  webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
                     
             - name: Release Tagging Status
-              if: ${{ github.event_name == 'push' && !contains(toJson(github.events.commits.*.message), '#skip') }}
               needs: [tag_release]
+              if: ${{ github.event_name == 'push' && success() && !contains(toJson(github.events.commits.*.message), '#skip') }}
               uses: rjstone/discord-webhook-notify@v1
               with:
-                  webhookUrl: $DW
-              steps: 
-              - if: success()
-                with:
-                    severity: info
-                    details: Release tagged successfully!
-              - if: failure()
-                with:
-                    severity: error
-                    details: Failed to tag release
+                  severity: info
+                  details: Release tagged successfully
+                  webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+              if: ${{ github.event_name == 'push' && success() && !contains(toJson(github.events.commits.*.message), '#skip') }}
+              with:
+                  severity: error
+                  details: Failed to tag release
+                  webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
