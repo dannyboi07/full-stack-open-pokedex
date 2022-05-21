@@ -84,7 +84,7 @@ jobs:
                   webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
               if: ${{ github.event_name == 'push' && failure() }}
               with: 
-                  severity: warn
+                  severity: error
                   details: Deployment Failed!
                   webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
                     
