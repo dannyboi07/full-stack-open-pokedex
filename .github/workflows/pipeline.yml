@@ -31,19 +31,21 @@ jobs:
                   start: npm run start-prod
                   wait-on: http://localhost:5000
     deployment_pipeline:
-        name: Deploying to Heroku
         if: ${{ github.event_name == 'push' }}
-        uses: akhileshns/heroku-deploy@v3.12.12
-        with:
-            heroku_api_key: ${{secrets.HEROKU_API_KEY}}
-            heroku_app_name: "thawing-everglades-99553"
-            heroku_email: "danielchettiar07@gmail.com"
-            healthcheck: "https://thawing-everglades-99553.herokuapp.com/health"
-            checkstring: "ok"
-            rollbackonhealthcheckfailed: true
+        needs: [test_pipeline]
+        runs-on: ubuntu-20.04
+        steps:
+        - uses: akhileshns/heroku-deploy@v3.12.12
+          with:
+              heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+              heroku_app_name: "thawing-everglades-99553"
+              heroku_email: "danielchettiar07@gmail.com"
+              healthcheck: "https://thawing-everglades-99553.herokuapp.com/health"
+              checkstring: "ok"
+              rollbackonhealthcheckfailed: true
     tag_release:
         if: ${{ github.event_name == 'push' && !contains(toJson(github.events.commits.*.message), '#skip') }}
-        needs: [simple_deployment_pipeline]
+        needs: [test_pipeline]
         permissions:
             contents: write
         runs-on: ubuntu-20.04
@@ -56,6 +58,7 @@ jobs:
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     notify:
+        runs-on: ubuntu-20.04
         steps:
             - name: Test Status
               needs: [test_pipeline]
