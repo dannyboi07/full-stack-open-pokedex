@@ -1,4 +1,4 @@
-name: Deployment pipeline Ex 11.18
+name: Deployment pipeline
 
 on:
     push:
