@@ -21,7 +21,7 @@ module.exports = {
 		"cy": true
 	},
     rules: {
-        indent: ["error", 4],
+        indent: ["error", "tab"],
         "linebreak-style": [
             "error",
             // process.platform === "win32" ? "windows" : "unix",
