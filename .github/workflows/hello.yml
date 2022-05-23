@@ -1,20 +1,30 @@
-name: Hello World!
+name: Test Workflow
 
 on:
     push:
         branches:
-            - master
+            - test
 
 jobs:
-    hello_world_job:
+    test_job:
         runs-on: ubuntu-20.04
         steps:
-            - name: Say Hello
-              run: |
-                  echo "Hello World!"
-            - name: Now it is
-              run: |
-                  date
-            - name: Directory content
-              run: |
-                  ls -l
+          - uses: actions/checkout@v2
+          - name: Github Context
+            env:
+              GITHUB_CONTEXT: ${{ toJson(github) }}
+            run: echo "$GITHUB_CONTEXT"
+
+          - name: Commits
+            env:
+              COMMITS: ${{ toJson(github.events.commits) }}
+            run: echo "$COMMITS"
+
+          - name: Commit messages
+            env:
+              COMMIT_MESSAGES: ${{ toJson(github.event.commits.*.message) }}
+            run: echo "$COMMIT_MESSAGES"
+          
+          - if: ${{ !contains(toJson(github.event.commits.*.message), '#skip') }}
+            name: Skip commit
+            run: echo "true"

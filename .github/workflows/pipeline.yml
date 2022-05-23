@@ -1,56 +1,107 @@
-name: Deployment pipeline Ex 11.13 - 11.14
+name: Deployment pipeline
 
-on: 
-  push:
-    branches:
-      - master
-  pull_request:
-    branches: [master]
-    types: [opened, synchronize]
+on:
+    push:
+        branches:
+            - master
+    pull_request:
+        branches: [master]
+        types: [opened, synchronize]
 
 jobs:
-  simple_deployment_pipeline:
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v2
-        with:
-          node-version: "16"
-      - name: Installing packages
-        run: npm install
-      - name: Linting
-        run: npm run eslint
-      - name: Creating a build
-        run: npm run build
-      - name: Jesting
-        run: npm run test
-      - name: Running E2E Cypress Tests
-        uses: cypress-io/github-action@v2
-        with:
-          command: npm run test:e2e
-          start: npm run start-prod
-          wait-on: http://localhost:5000
-      - if: ${{ github.event_name == 'push' }} 
-        name: Deploying to Heroku
-        uses: akhileshns/heroku-deploy@v3.12.12
-        with:
-          heroku_api_key: ${{secrets.HEROKU_API_KEY}}
-          heroku_app_name: "thawing-everglades-99553"
-          heroku_email: "danielchettiar07@gmail.com"
-          healthcheck: "https://thawing-everglades-99553.herokuapp.com/health"
-          checkstring: "ok"
-          rollbackonhealthcheckfailed: true
-  tag_release:
-    if: ${{ github.event_name == 'push' }}
-    needs: [simple_deployment_pipeline]
-    permissions:
-      contents: write
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: '0'
-      - name: Bump version and push tag
-        uses: anothrNick/github-tag-action@1.36.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    test_pipeline:
+        runs-on: ubuntu-20.04
+        env: 
+          DW: ${{ secrets.DISCORD_WEBHOOK }}
+        steps:
+            - uses: actions/checkout@v3
+            - uses: actions/setup-node@v2
+              with:
+                  node-version: "16"
+            - name: Installing packages
+              run: npm install
+            - name: Linting
+              run: npm run eslint
+            - name: Creating a build
+              run: npm run build
+            - name: Jesting
+              run: npm run test
+            - name: Running E2E Cypress Tests
+              uses: cypress-io/github-action@v2
+              with:
+                  command: npm run test:e2e
+                  start: npm run start-prod
+                  wait-on: http://localhost:5000
+            - name: Determining success of Tests
+              if: ${{ success() }}
+              uses: rjstone/discord-webhook-notify@v1
+              with:
+                severity: info
+                details: Tests Succeeded!
+                webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+            - name: Determining failure of Tests
+              if: ${{ failure() }}
+              uses: rjstone/discord-webhook-notify@v1
+              with:
+                severity: error
+                details: Tests Failed!
+                webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+    deployment_pipeline:
+        needs: [test_pipeline]
+        if: ${{ github.event_name == 'push' }}
+        runs-on: ubuntu-20.04
+        env: 
+          DW: ${{ secrets.DISCORD_WEBHOOK }}
+        steps:
+        - uses: akhileshns/heroku-deploy@v3.12.12
+          with:
+              heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+              heroku_app_name: "thawing-everglades-99553"
+              heroku_email: "danielchettiar07@gmail.com"
+              healthcheck: "https://thawing-everglades-99553.herokuapp.com/health"
+              checkstring: "ok"
+              rollbackonhealthcheckfailed: true
+        - name: Determining success of Deployment
+          if: ${{ success() }}
+          uses: rjstone/discord-webhook-notify@v1
+          with:
+            severity: info
+            details: Deployment Succeeded!
+            webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+        - name: Determining failure of Deployment
+          if: ${{ failure() }}
+          uses: rjstone/discord-webhook-notify@v1
+          with:
+            severity: error
+            details: Deployment Failed!
+            webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+    tag_release:
+        if: ${{ github.event_name == 'push' && !contains(toJson(github.events.commits.*.message), '#skip') }}
+        needs: [test_pipeline]
+        permissions:
+            contents: write
+        runs-on: ubuntu-20.04
+        env: 
+          DW: ${{ secrets.DISCORD_WEBHOOK }}
+        steps:
+            - uses: actions/checkout@v2
+              with:
+                  fetch-depth: "0"
+            - name: Bump version and push tag
+              uses: anothrNick/github-tag-action@eca2b69f9e2c24be7decccd0f15fdb1ea5906598
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: Determining success of workflow tagging releases
+              if: ${{ success() }}
+              uses: rjstone/discord-webhook-notify@v1
+              with:
+                severity: info
+                details: Release tagged successfully!
+                webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+            - name: Determining failure of workflow tagging releases
+              if: ${{ failure() }}
+              uses: rjstone/discord-webhook-notify@v1
+              with:
+                severity: error
+                details: Release failed to tagged!
+                webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
