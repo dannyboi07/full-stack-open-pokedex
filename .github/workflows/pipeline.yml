@@ -77,7 +77,7 @@ jobs:
             webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
     tag_release:
         if: ${{ github.event_name == 'push' && !contains(toJson(github.events.commits.*.message), '#skip') }}
-        needs: [test_pipeline]
+        needs: [deployment_pipeline]
         permissions:
             contents: write
         runs-on: ubuntu-20.04
